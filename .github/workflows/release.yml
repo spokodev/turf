@@ -10,44 +10,42 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  publish:
+    name: "Publish Release"
     environment: release
-    strategy:
-      fail-fast: true
-      matrix:
-        node:
-          - 26
-        platform:
-          - ubuntu-latest
-    name: "${{matrix.platform}} / Node.js ${{ matrix.node }}"
-    runs-on: ${{matrix.platform}}
-
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # 4.1.0
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           run_install: false
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # 4.3.0
+      - name: Use Node.js 26
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "pnpm"
+          node-version: "26"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
 
       - run: pnpm install --frozen-lockfile
-
+      - run: pnpm build
       - run: pnpm test
 
       - name: run publish
         run: pnpm -r publish --no-git-checks --provenance --access public
 
-      - name: Create Github Release
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # 2.2.1
-        with:
-          make_latest: true
-          generate_release_notes: true
-          draft: true
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --verify-tag \
+            --fail-on-no-commits \
+            --draft \
+            --generate-notes \
+            --latest
