@@ -468,9 +468,7 @@ function featureEach<
   P extends GeoJsonProperties = GeoJsonProperties,
 >(
   geojson:
-    | Feature<G, P>
-    | FeatureCollection<G, P>
-    | Feature<GeometryCollection, P>,
+    Feature<G, P> | FeatureCollection<G, P> | Feature<GeometryCollection, P>,
   callback: (currentFeature: Feature<G, P>, featureIndex: number) => void
 ): void {
   if (geojson.type === "Feature") {
@@ -533,9 +531,7 @@ function featureReduce<
   P extends GeoJsonProperties = GeoJsonProperties,
 >(
   geojson:
-    | Feature<G, P>
-    | FeatureCollection<G, P>
-    | Feature<GeometryCollection, P>,
+    Feature<G, P> | FeatureCollection<G, P> | Feature<GeometryCollection, P>,
   callback: (
     previousValue: Reducer,
     currentFeature: Feature<G, P>,
@@ -594,6 +590,8 @@ function coordAll(geojson: AllGeoJSON): number[][] {
 
 /**
  * Iterate over each geometry in any GeoJSON object, similar to Array.forEach()
+ *
+ * Note: Nested GeometryCollections are not recursively unwrapped.
  *
  * @function
  * @param {FeatureCollection|Feature|Geometry|GeometryObject|Feature<GeometryCollection>} geojson any GeoJSON object

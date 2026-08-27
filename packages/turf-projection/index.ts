@@ -1,10 +1,10 @@
-import { Position } from "geojson";
+import type { Position, GeoJSON } from "geojson";
 import { coordEach } from "@turf/meta";
-import { AllGeoJSON, isNumber } from "@turf/helpers";
+import { type AllGeoJSON, isNumber } from "@turf/helpers";
 import { clone } from "@turf/clone";
 
 /**
- * Converts a WGS84 GeoJSON object into Mercator (EPSG:900913) projection
+ * Converts a WGS84 GeoJSON object into Mercator (EPSG:3857) projection
  *
  * @function
  * @param {GeoJSON|Position} geojson WGS84 GeoJSON object
@@ -18,15 +18,15 @@ import { clone } from "@turf/clone";
  * //addToMap
  * var addToMap = [pt, converted];
  */
-function toMercator<G = AllGeoJSON | Position>(
+function toMercator<G extends AllGeoJSON | Position>(
   geojson: G,
   options: { mutate?: boolean } = {}
 ): G {
-  return convert(geojson, "mercator", options);
+  return project(geojson, convertToMercator, options);
 }
 
 /**
- * Converts a Mercator (EPSG:900913) GeoJSON object into WGS84 projection
+ * Converts a Mercator (EPSG:3857) GeoJSON object into WGS84 projection
  *
  * @function
  * @param {GeoJSON|Position} geojson Mercator GeoJSON object
@@ -40,51 +40,49 @@ function toMercator<G = AllGeoJSON | Position>(
  * //addToMap
  * var addToMap = [pt, converted];
  */
-function toWgs84<G = AllGeoJSON | Position>(
+function toWgs84<G extends AllGeoJSON | Position>(
   geojson: G,
   options: { mutate?: boolean } = {}
 ): G {
-  return convert(geojson, "wgs84", options);
+  return project(geojson, convertToWgs84, options);
 }
 
 /**
- * Converts a GeoJSON coordinates to the defined `projection`
+ * Projects GeoJSON or Position objects using a custom projection function.
  *
- * @private
- * @param {GeoJSON} geojson GeoJSON Feature or Geometry
- * @param {string} projection defines the projection system to convert the coordinates to
+ * Designed for reprojecting coordinates using external libraries like proj4 or custom transformations
+ * not built into @turf/projection, handling all GeoJSON structure traversal automatically.
+ *
+ * @param {GeoJSON} geojson GeoJSON or Position object
+ * @param {string} projection A function that implements the projection
  * @param {Object} [options] Optional parameters
  * @param {boolean} [options.mutate=false] allows GeoJSON input to be mutated (significant performance increase if true)
- * @returns {GeoJSON} Converted GeoJSON
+ * @returns {GeoJSON} Converted GeoJSON in the same shape as the original
  */
-function convert(
-  geojson: any,
-  projection: string,
+function project<G extends GeoJSON | Position>(
+  geojson: G,
+  projection: (input: number[]) => number[],
   options: { mutate?: boolean } = {}
-): any {
-  // Optional parameters
-  options = options || {};
-  var mutate = options.mutate;
+): G {
+  const mutate = options?.mutate ?? false;
 
   // Validation
-  if (!geojson) throw new Error("geojson is required");
+  if (!geojson) {
+    throw new Error("geojson is required");
+  }
 
-  // Handle Position
-  if (Array.isArray(geojson) && isNumber(geojson[0]))
-    geojson =
-      projection === "mercator"
-        ? convertToMercator(geojson)
-        : convertToWgs84(geojson);
-  // Handle GeoJSON
-  else {
+  if (Array.isArray(geojson) && isNumber(geojson[0])) {
+    // Handle Position
+    geojson = projection(geojson) as G;
+  } else {
+    // Handle GeoJSON
     // Handle possible data mutation
-    if (mutate !== true) geojson = clone(geojson);
+    if (mutate !== true) {
+      geojson = clone(geojson as GeoJSON) as G;
+    }
 
-    coordEach(geojson, function (coord) {
-      var newCoord =
-        projection === "mercator"
-          ? convertToMercator(coord)
-          : convertToWgs84(coord);
+    coordEach(geojson as GeoJSON, (coord) => {
+      const newCoord = projection(coord);
       coord[0] = newCoord[0];
       coord[1] = newCoord[1];
     });
@@ -93,7 +91,7 @@ function convert(
 }
 
 /**
- * Convert lon/lat values to 900913 x/y.
+ * Convert lon/lat values to 3857 x/y.
  * (from https://github.com/mapbox/sphericalmercator)
  *
  * @private
@@ -102,7 +100,7 @@ function convert(
  */
 function convertToMercator(lonLat: number[]) {
   var D2R = Math.PI / 180,
-    // 900913 properties
+    // 3857 properties
     A = 6378137.0,
     MAXEXTENT = 20037508.342789244;
 
@@ -125,7 +123,7 @@ function convertToMercator(lonLat: number[]) {
 }
 
 /**
- * Convert 900913 x/y values to lon/lat.
+ * Convert 3857 x/y values to lon/lat.
  * (from https://github.com/mapbox/sphericalmercator)
  *
  * @private
@@ -133,7 +131,7 @@ function convertToMercator(lonLat: number[]) {
  * @returns {Array<number>} WGS84 [lon, lat] point
  */
 function convertToWgs84(xy: number[]) {
-  // 900913 properties.
+  // 3857 properties.
   var R2D = 180 / Math.PI;
   var A = 6378137.0;
 
@@ -154,4 +152,4 @@ function sign(x: number) {
   return x < 0 ? -1 : x > 0 ? 1 : 0;
 }
 
-export { toMercator, toWgs84 };
+export { toMercator, toWgs84, project };

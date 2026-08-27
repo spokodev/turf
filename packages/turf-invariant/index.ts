@@ -66,12 +66,7 @@ function getCoord(coord: Feature<Point> | Point | number[]): number[] {
  */
 function getCoords<
   G extends
-    | Point
-    | LineString
-    | Polygon
-    | MultiPoint
-    | MultiLineString
-    | MultiPolygon,
+    Point | LineString | Polygon | MultiPoint | MultiLineString | MultiPolygon,
 >(coords: any[] | Feature<G> | G): any[] {
   if (Array.isArray(coords)) {
     return coords;
@@ -250,7 +245,6 @@ function getGeom<G extends Geometry>(geojson: Feature<G> | G): G {
  * Get GeoJSON object's type, Geometry type is prioritize.
  *
  * @param {GeoJSON} geojson GeoJSON object
- * @param {string} [name="geojson"] name of the variable to display in error message (unused)
  * @returns {string} GeoJSON type
  * @example
  * var point = {
@@ -265,8 +259,7 @@ function getGeom<G extends Geometry>(geojson: Feature<G> | G): G {
  * //="Point"
  */
 function getType(
-  geojson: Feature<any> | FeatureCollection<any> | Geometry,
-  _name?: string
+  geojson: Feature<any> | FeatureCollection<any> | Geometry
 ): string {
   if (geojson.type === "FeatureCollection") {
     return "FeatureCollection";

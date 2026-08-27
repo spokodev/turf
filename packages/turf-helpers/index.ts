@@ -13,6 +13,7 @@ import {
   Polygon,
   Position,
   GeoJsonProperties,
+  GeoJSON,
 } from "geojson";
 
 import { Id } from "./lib/geojson.js";
@@ -104,10 +105,7 @@ export type Lines = LineString | MultiLineString | Polygon | MultiPolygon;
  * @typedef
  */
 export type AllGeoJSON =
-  | Feature
-  | FeatureCollection
-  | Geometry
-  | GeometryCollection;
+  Feature | FeatureCollection | Geometry | GeometryCollection;
 
 /**
  * The Earth radius in meters. Used by Turf modules that model the Earth as a sphere. The {@link https://en.wikipedia.org/wiki/Earth_radius#Arithmetic_mean_radius mean radius} was selected because it is {@link https://rosettacode.org/wiki/Haversine_formula#:~:text=This%20value%20is%20recommended recommended } by the Haversine formula (used by turf/distance) to reduce error.
@@ -642,12 +640,7 @@ export function multiPolygon<P extends GeoJsonProperties = GeoJsonProperties>(
  */
 export function geometryCollection<
   G extends
-    | Point
-    | LineString
-    | Polygon
-    | MultiPoint
-    | MultiLineString
-    | MultiPolygon,
+    Point | LineString | Polygon | MultiPoint | MultiLineString | MultiPolygon,
   P extends GeoJsonProperties = GeoJsonProperties,
 >(
   geometries: Array<G>,
@@ -883,6 +876,27 @@ export function isNumber(num: any): boolean {
  */
 export function isObject(input: any): boolean {
   return input !== null && typeof input === "object" && !Array.isArray(input);
+}
+
+/**
+ * Recursively removes bounding boxes from a GeoJSON object.
+ *
+ * This function mutates the input GeoJSON object.
+ *
+ * @function
+ * @param {GeoJSON} geojson GeoJSON object whose bounding boxes should be removed
+ * @returns {void}
+ */
+export function removeBbox(geojson: GeoJSON): void {
+  delete geojson.bbox;
+
+  if (geojson.type === "Feature") {
+    if (geojson.geometry) removeBbox(geojson.geometry);
+  } else if (geojson.type === "FeatureCollection") {
+    geojson.features.forEach(removeBbox);
+  } else if (geojson.type === "GeometryCollection") {
+    geojson.geometries.forEach(removeBbox);
+  }
 }
 
 /**
